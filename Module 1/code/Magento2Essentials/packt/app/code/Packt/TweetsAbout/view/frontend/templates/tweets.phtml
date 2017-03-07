@@ -1,0 +1,24 @@
+<?php
+  $tweets = $block->searchTweets();
+?>
+
+<div id="wrapper">
+	<div id="columns">
+		<?php foreach ($tweets as $tweet){ ?>
+      <div class="tweet">
+        <p>
+          <a href="https://twitter.com/intent/user?user_id=<?php echo $tweet->user->id; ?>" target="_blank">
+            <img src="<?php echo $tweet->user->profile_image_url; ?>" alt="profile">
+            <?php echo $tweet->user->name; ?>
+          </a>
+          <br />
+          Created: <?php echo $tweet->created_at; ?>
+          <br /><br />
+          <a href="<?php echo isset($tweet->entities->urls[0]->url) ? $tweet->entities->urls[0]->url : "#"; ?>" target="_blank"><?php echo $tweet->text;?></a>
+            <?php echo $tweet->text;?>
+          </a>
+        </p>
+      </div>
+    <?php } ?>
+  </div>
+</div>

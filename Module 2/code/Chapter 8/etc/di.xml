@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <preference for="Genmato\Sample\Model\DemoInterface" type="Genmato\Sample\Model\Demo" />
+
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="sample_demolist_listing_data_source" xsi:type="string">Genmato\Sample\Model\ResourceModel\Demo\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="Genmato\Sample\Model\ResourceModel\Demo\Grid\Collection">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">genmato_demo</argument>
+            <argument name="eventPrefix" xsi:type="string">sample_demolist_grid_collection</argument>
+            <argument name="eventObject" xsi:type="string">sample_demolist_collection</argument>
+            <argument name="resourceModel" xsi:type="string">Genmato\Sample\Model\ResourceModel\Demo</argument>
+        </arguments>
+    </type>
+    <virtualType name="DemoGridFilterPool" type="Magento\Framework\View\Element\UiComponent\DataProvider\FilterPool">
+        <arguments>
+            <argument name="appliers" xsi:type="array">
+                <item name="regular" xsi:type="object">Magento\Framework\View\Element\UiComponent\DataProvider\RegularFilter</item>
+                <item name="fulltext" xsi:type="object">Magento\Framework\View\Element\UiComponent\DataProvider\FulltextFilter</item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="DemoGridDataProvider" type="Magento\Framework\View\Element\UiComponent\DataProvider\DataProvider">
+        <arguments>
+            <argument name="collection" xsi:type="object" shared="false">Genmato\Sample\Model\ResourceModel\Demo\Collection</argument>
+            <argument name="filterPool" xsi:type="object" shared="false">DemoGridFilterPool</argument>
+        </arguments>
+    </virtualType>
+
+    <type name="Magento\Cms\Model\Page">
+        <plugin name="sample_before" type="Genmato\Sample\Plugin\BeforePage" sortOrder="1" disabled="false"/>
+    </type>
+
+    <type name="Magento\Catalog\Model\Product">
+        <plugin name="sample_around" type="Genmato\Sample\Plugin\AroundProduct" sortOrder="1" disabled="false"/>
+    </type>
+
+    <type name="Magento\Cms\Model\Page">
+        <plugin name="sample_after" type="Genmato\Sample\Plugin\AfterPage" sortOrder="1" disabled="false"/>
+    </type>
+
+    <preference for="Genmato\Sample\Api\DemoRepositoryInterface"
+                type="Genmato\Sample\Model\ResourceModel\DemoRepository" />
+
+    <preference for="Genmato\Sample\Api\Data\DemoInterface" type="Genmato\Sample\Model\Data\Demo" />
+    <preference for="Genmato\Sample\Api\Data\DemoSearchResultsInterface"
+                type="Magento\Framework\Api\SearchResults" />
+
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="demoadd" xsi:type="object">Genmato\Sample\Console\Command\AddCommand</item>
+                <item name="demolist" xsi:type="object">Genmato\Sample\Console\Command\ListCommand</item>
+                <item name="demoget" xsi:type="object">Genmato\Sample\Console\Command\GetCommand</item>
+                <item name="demodelete" xsi:type="object">Genmato\Sample\Console\Command\DeleteCommand</item>
+            </argument>
+        </arguments>
+    </type>
+
+</config>

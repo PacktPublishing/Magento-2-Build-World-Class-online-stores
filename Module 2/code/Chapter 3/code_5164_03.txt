@@ -1,0 +1,299 @@
+<?php
+return array (
+'cache' => 
+  array (
+    'frontend' => 
+    array (
+      'default' => 
+      array (
+        'backend' => 'Cm_Cache_Backend_Redis',
+        'backend_options' => 
+        array (
+          'server' => '127.0.0.1',
+          'port' => '6379',
+          'persistent' => '',
+          'database' => '0',
+          'force_standalone' => '0',
+          'connect_retries' => '1',
+          'read_timeout' => '10',
+          'automatic_cleaning_factor' => '0',
+          'compress_data' => '1',
+          'compress_tags' => '1',
+          'compress_threshold' => '20480',
+          'compression_lib' => 'gzip',
+        ),
+      ),
+      'page_cache' => 
+      array (
+        'backend' => 'Cm_Cache_Backend_Redis',
+        'backend_options' => 
+        array (
+          'server' => '127.0.0.1',
+          'port' => '6379',
+          'persistent' => '',
+          'database' => '1',
+          'force_standalone' => '0',
+          'connect_retries' => '1',
+          'read_timeout' => '10',
+          'automatic_cleaning_factor' => '0',
+          'compress_data' => '0',
+          'compress_tags' => '1',
+          'compress_threshold' => '20480',
+          'compression_lib' => 'gzip',
+        ),
+      ),
+    ),
+  ),
+
+################################################
+
+location ~ ^/phpredmin/.+\.php {
+
+	fastcgi_split_path_info ^(.+\.php)(/.+)$;
+
+	set $fsn /index.php;
+        if (-f $document_root$fastcgi_script_name) {
+		set $fsn $fastcgi_script_name;
+        }
+
+        # php5-fpm
+        fastcgi_pass fastcgi_backend;
+        fastcgi_index  index.php;
+
+        fastcgi_param  SCRIPT_FILENAME  $document_root$fsn;
+        fastcgi_param  PATH_INFO  $fastcgi_path_info;
+        fastcgi_param  PATH_TRANSLATED  $document_root$fsn;
+
+	include fastcgi_params;
+}
+
+################################################
+
+'session' =>
+    array (
+    'save' => 'files',
+),
+
+################################################
+
+'session' =>
+   array (
+      'save' => 'memcached',
+      'save_path' => 'localhost:112211'
+),
+
+################################################
+
+vcl 4.0;
+
+import std;
+# The minimal Varnish version is 4.0
+
+backend default {
+    .host = "127.0.0.1";
+    .port = "8080";
+}
+
+acl purge {
+
+}
+
+sub vcl_recv {
+    if (req.method == "PURGE") {
+        if (client.ip !~ purge) {
+            return (synth(405, "Method not allowed"));
+        }
+        if (!req.http.X-Magento-Tags-Pattern) {
+            return (synth(400, "X-Magento-Tags-Pattern header required"));
+        }
+        ban("obj.http.X-Magento-Tags ~ " + req.http.X-Magento-Tags-Pattern);
+        return (synth(200, "Purged"));
+    }
+
+    if (req.method != "GET" &&
+        req.method != "HEAD" &&
+        req.method != "PUT" &&
+        req.method != "POST" &&
+        req.method != "TRACE" &&
+        req.method != "OPTIONS" &&
+        req.method != "DELETE") {
+          /* Non-RFC2616 or CONNECT which is weird. */
+          return (pipe);
+    }
+
+    # We only deal with GET and HEAD by default
+    if (req.method != "GET" && req.method != "HEAD") {
+        return (pass);
+    }
+
+ # Bypass shopping cart and checkout requests
+    if (req.url ~ "/checkout") {
+        return (pass);
+    }
+
+    # normalize url in case of leading HTTP scheme and domain
+    set req.url = regsub(req.url, "^http[s]?://", "");
+
+    # collect all cookies
+    std.collect(req.http.Cookie);
+
+    # static files are always cacheable. remove SSL flag and cookie
+        if (req.url ~ "^/(pub/)?(media|static)/.*\.(ico|css|js|jpg|jpeg|png|gif|tiff|bmp|mp3|ogg|svg|swf|woff|woff2|eot|ttf|otf)$") {
+        unset req.http.Https;
+        unset req.http.Cookie;
+    }
+
+    return (hash);
+}
+
+sub vcl_hash {
+    if (req.http.cookie ~ "X-Magento-Vary=") {
+        hash_data(regsub(req.http.cookie, "^.*?X-Magento-Vary=([^;]+);*.*$", "\1"));
+    }
+
+}
+
+sub vcl_backend_response {
+    if (beresp.http.content-type ~ "text") {
+        set beresp.do_esi = true;
+    }
+
+    if (bereq.url ~ "\.js$" || beresp.http.content-type ~ "text") {
+        set beresp.do_gzip = true;
+    }
+
+ # cache only successfully responses and 404s
+    if (beresp.status != 200 && beresp.status != 404) {
+        set beresp.ttl = 0s;
+        set beresp.uncacheable = true;
+        return (deliver);
+    } elsif (beresp.http.Cache-Control ~ "private") {
+        set beresp.uncacheable = true;
+        set beresp.ttl = 86400s;
+        return (deliver);
+    }
+
+    if (beresp.http.X-Magento-Debug) {
+        set beresp.http.X-Magento-Cache-Control = beresp.http.Cache-Control;
+    }
+
+    # validate if we need to cache it and prevent from setting cookie
+    # images, css and js are cacheable by default so we have to remove cookie also
+    if (beresp.ttl > 0s && (bereq.method == "GET" || bereq.method == "HEAD")) {
+        unset beresp.http.set-cookie;
+        if (bereq.url !~ "\.(ico|css|js|jpg|jpeg|png|gif|tiff|bmp|gz|tgz|bz2|tbz|mp3|ogg|svg|swf|woff|woff2|eot|ttf|otf)(\?|$)") {
+            set beresp.http.Pragma = "no-cache";
+            set beresp.http.Expires = "-1";
+            set beresp.http.Cache-Control = "no-store, no-cache, must-revalidate, max-age=0";
+            set beresp.grace = 1m;
+        }
+    }
+    return (deliver);
+}
+
+sub vcl_deliver {
+    if (resp.http.X-Magento-Debug) {
+        if (resp.http.x-varnish ~ " ") {
+            set resp.http.X-Magento-Cache-Debug = "HIT";
+        } else {
+            set resp.http.X-Magento-Cache-Debug = "MISS";
+        }
+    } else {
+        unset resp.http.Age;
+    }
+
+    unset resp.http.X-Magento-Debug;
+    unset resp.http.X-Magento-Tags;
+    unset resp.http.X-Powered-By;
+    unset resp.http.Server;
+    unset resp.http.X-Varnish;
+    unset resp.http.Via;
+    unset resp.http.Link;
+}
+
+################################################
+
+
+START=yes
+NFILES=131072
+MEMLOCK=82000
+DAEMON_OPTS="-a :80 \
+             -T localhost:6082 \
+             -f /etc/varnish/default.vcl \
+             -S /etc/varnish/secret \
+             -s malloc,256m"
+
+################################################
+
+[Unit]
+Description=Varnish HTTP accelerator
+
+[Service]
+Type=forking
+LimitNOFILE=131072
+LimitMEMLOCK=82000
+ExecStartPre=/usr/sbin/varnishd -C -f /etc/varnish/default.vcl
+ExecStart=/usr/sbin/varnishd -a :80 -T localhost:6082 -f /etc/varnish/default.vcl -S /etc/varnish/secret -s malloc,256m
+ExecReload=/usr/share/varnish/reload-vcl
+
+[Install]
+WantedBy=multi-user.target
+
+################################################
+
+upstream fastcgi_backend {
+        server  127.0.0.1:9000;
+}
+server {
+    listen       80;
+    listen	 443 ssl http2;
+    
+    server_name  yourdomain.com;
+
+    set $MAGE_ROOT /var/www/html;
+    set $MAGE_MODE developer;
+    		
+ ssl_certificate /etc/ssl/yourdomain-com.cert;
+ ssl_certificate_key /etc/ssl/yourdomain-com.key;
+
+    include /var/www/html/nginx.conf.sample;
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    location ~ /\.ht {
+        deny  all;
+    }
+}
+
+################################################
+
+bin/magento setup:install \
+	      --db-host=localhost \
+		--db-name=<your-db-name> \
+		--db-user="<db-user>" \
+		--db-password="<db-password>" \
+		--backend-frontname=<admin-path> \
+		--base-url=http://yourdomain.com/ \
+		--admin-lastname=<your-lastname> \
+		--admin-firstname=<your-firstname> \
+		--admin-email=<your-email> \
+		--admin-user=<your-admin-user> \
+		--admin-password=<your-password> \
+		--use-rewrites=1 \
+		--cleanup-database \
+
+################################################
+
+
+
+
+
+
+
+
+
+
+
+
+

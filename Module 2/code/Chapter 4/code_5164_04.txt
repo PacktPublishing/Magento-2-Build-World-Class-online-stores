@@ -1,0 +1,73 @@
+
+map $http_host $magecode {
+hostnames;
+        default base;
+        mage2cookbook.de de;
+        mage2cookbook.fr fr;
+}
+
+
+fastcgi_param MAGE_RUN_TYPE website;
+fastcgi_param MAGE_RUN_CODE $magecode;
+
+################################################################################
+
+map $http_host $magecode {
+hostnames;
+
+        default en;
+        mage2cookbook.de de;
+        mage2cookbook.fr fr;
+}
+
+upstream fastcgi_backend {
+        server  127.0.0.1:9000;
+}
+
+server {
+        #listen 127.0.0.1:8080;
+        listen 80;
+        listen 443 ssl http2;
+
+        server_name mage2cookbook.com;
+
+        set $MAGE_ROOT /var/www/magento2;
+        set $MAGE_MODE developer;
+        #set $MAGE_MODE production;
+
+        ssl_certificate /etc/ssl/mage2cookbook-com.cert;
+        ssl_certificate_key /etc/ssl/mage2cookbook-com.key;
+
+        include /etc/nginx/conf.d/magento2.conf.include;
+
+        access_log /var/log/nginx/mage2-access.log;
+        error_log /var/log/nginx/mage2-error.log;
+}
+
+################################################################################
+
+
+location ~ (index|get|static|report|404|503|info)\.php$ {
+    try_files $uri =404;
+    fastcgi_pass   fastcgi_backend;
+
+    fastcgi_param MAGE_RUN_TYPE website;
+    fastcgi_param MAGE_RUN_CODE $magecode;
+
+    fastcgi_param  PHP_FLAG  "session.auto_start=off \n suhosin.session.cryptua=off";
+    fastcgi_param  PHP_VALUE "memory_limit=256M \n max_execution_time=600";
+    fastcgi_read_timeout 600s;
+    fastcgi_connect_timeout 600s;
+    fastcgi_param  MAGE_MODE $MAGE_MODE;
+
+    fastcgi_index  index.php;
+    fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+    include        fastcgi_params;
+}
+
+################################################################################
+
+<?php header("Content-type: text/plain"); print_r($_SERVER); ?>
+
+
+

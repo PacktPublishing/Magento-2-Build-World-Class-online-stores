@@ -1,0 +1,37 @@
+{
+  "name": "chapter_02",
+  "version": "1.0.0",
+  "description": "TypeScript Cookbook chapter 2 source files",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/remojansen/TsCookbook.git"
+  },
+  "keywords": [
+    "typescript",
+    "cookbook",
+    "learning",
+    "code",
+    "examples"
+  ],
+  "author": "Remo H. Jansen <remo.jansen@wolksoftware.com> (http://wwww.remojansen.com)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/remojansen/TsCookbook/issues"
+  },
+  "homepage": "https://github.com/remojansen/TsCookbook#readme",
+  "devDependencies": {
+    "gulp": "^3.9.0",
+    "gulp-tslint": "^4.1.0",
+    "gulp-typescript": "^2.9.2",
+    "gulp-webserver": "^0.9.1",
+    "tslint": "^3.1.0-dev.1",
+    "typescript": "^1.8.0-dev.20151129"
+  },
+  "dependencies": {
+    "jquery": "^2.1.4"
+  }
+}

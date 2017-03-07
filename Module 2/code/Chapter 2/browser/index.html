@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>TsCookbook - Chapter 02</title>
+    <style>
+      body {
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        font-size: 14px;
+      }
+      .container {
+        padding: 1%;
+      }
+      .col {
+        width: 48%;
+        float: left;
+        padding: 1%;
+      }
+      .code {
+        padding: 2%;
+        color: #98D6F7;
+        background-color: #333333;
+        min-height: 500px;
+        font-family: Consolas, monaco, monospace;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Select Recipe:</h2>
+      <select id="snippet_selector"><!-- options added by JS --></select>
+    </div>
+    <div>
+      <div class="col">
+        <h2>TypeScript</h2>
+        <pre id="ts_code" class="code"></pre>
+      </div>
+      <div class="col">
+        <h2>JavaScript</h2>
+        <pre id="js_code" class="code"></pre>
+      </div>
+    </div>
+    <script src="../node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="../src/examples.js"></script>
+  </body>
+</html>
